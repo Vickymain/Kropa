@@ -1,0 +1,12 @@
+{
+  "venvPath": "/home/kali/Documents/Kropa",
+  "venv": "venv",
+  "pythonVersion": "3.13",
+  "pythonPlatform": "Linux",
+  "typeCheckingMode": "basic",
+  "extraPaths": [
+    "/home/kali/Documents/Kropa/venv/lib/python3.13/site-packages"
+  ],
+  "reportMissingImports": false,
+  "reportMissingModuleSource": false
+}
