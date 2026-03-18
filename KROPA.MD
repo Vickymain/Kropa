@@ -30,17 +30,5 @@ KROPA is an expert system designed to assist farmers in diagnosing crop diseases
 - Expandable knowledge base
 - Optional image-based detection (future)
 
-## Tech Stack
-- **Backend:** Django (Python)
-- **Frontend:** HTML, CSS, JavaScript
-- **Database:** SQLite
-- **Future:** Machine Learning (TensorFlow/PyTorch)
-
-## Future Improvements
-- Image recognition for disease detection
-- Mobile app integration
-- Multilingual support
-- Offline functionality
-
 ## Example Use Case
 A farmer notices yellow leaves and brown spots. KROPA analyzes symptoms and returns Leaf Blight, caused by fungal infection, with treatment recommendations.
