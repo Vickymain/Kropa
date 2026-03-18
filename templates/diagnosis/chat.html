@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KROPA – Crop Disease Expert System</title>
+  <meta name="description" content="Describe your crop's symptoms in plain text and get an instant expert system diagnosis powered by Prolog." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       KROPA CHAT – DESIGN TOKENS
+    ============================================================ */
+    :root {
+      --bg:          #0b1410;
+      --bg-2:        #111d17;
+      --bg-3:        #172319;
+      --border:      #1f3028;
+      --brand:       #34d37a;
+      --brand-dim:   #1a6b3c;
+      --brand-glow:  rgba(52,211,122,.18);
+      --brand-soft:  rgba(52,211,122,.08);
+      --accent:      #f59e0b;
+      --text:        #e8ede9;
+      --text-2:      #7fa88a;
+      --text-3:      #405c48;
+      --high:        #34d37a;
+      --mod:         #f59e0b;
+      --low:         #ef4444;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --font:        'Inter', sans-serif;
+      --font-head:   'Space Grotesk', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============================================================
+       HEADER BAR
+    ============================================================ */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .9rem 1.5rem;
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .brand-leaf { font-size: 1.4rem; }
+    .brand-name {
+      font-family: var(--font-head);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--brand);
+    }
+    .brand-tag {
+      font-size: .7rem;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .15rem .55rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .engine-badge {
+      font-size: .72rem;
+      color: var(--text-2);
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .7rem;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .engine-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 6px var(--brand);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: .4; }
+    }
+
+    /* ============================================================
+       CHAT LAYOUT
+    ============================================================ */
+    .chat-wrap {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Message feed */
+    #feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    #feed::-webkit-scrollbar { width: 5px; }
+    #feed::-webkit-scrollbar-button { display: none; height: 0; }
+    #feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    #feed::-webkit-scrollbar-track { background: transparent; }
+
+    /* ============================================================
+       MESSAGES
+    ============================================================ */
+    .msg {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start;
+      animation: fadeSlide .3s ease forwards;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg--user { flex-direction: row-reverse; }
+
+    .msg-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .msg--system .msg-avatar { background: var(--brand-dim); color: var(--brand); }
+    .msg--user   .msg-avatar { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
+
+    .msg-bubble {
+      max-width: 78%;
+      padding: .85rem 1.1rem;
+      border-radius: var(--radius);
+      font-size: .9rem;
+      line-height: 1.65;
+    }
+    .msg--system .msg-bubble {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+    }
+    .msg--user .msg-bubble {
+      background: var(--brand-dim);
+      color: #fff;
+      border-top-right-radius: 4px;
+    }
+
+    /* Typing indicator */
+    .typing-dots { display: flex; gap: 4px; align-items: center; height: 20px; }
+    .typing-dots span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--brand);
+      animation: bounce .9s ease-in-out infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .15s; }
+    .typing-dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce {
+      0%,80%,100% { transform: scale(.8); opacity: .5; }
+      40%          { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* ============================================================
+       DIAGNOSIS RESULT CARD (inside a bubble)
+    ============================================================ */
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: .85rem;
+      padding-bottom: .65rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .82rem;
+      color: var(--text-2);
+    }
+    .result-crop { font-weight: 600; color: var(--brand); }
+
+    .sym-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+      margin-bottom: 1rem;
+    }
+    .sym-chip {
+      font-size: .7rem;
+      background: var(--brand-soft);
+      border: 1px solid rgba(52,211,122,.2);
+      color: var(--brand);
+      padding: .2rem .55rem;
+      border-radius: 999px;
+    }
+
+    .disease-list { display: flex; flex-direction: column; gap: .75rem; }
+
+    .disease-item {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .disease-item--top { border-color: var(--brand-dim); }
+
+    .d-head {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .7rem 1rem;
+      background: rgba(0,0,0,.2);
+    }
+    .d-rank { font-size: 1rem; flex-shrink: 0; }
+    .d-name { font-weight: 600; font-size: .9rem; flex: 1; }
+    .d-score { font-family: var(--font-head); font-size: .9rem; font-weight: 700; }
+    .conf-badge {
+      font-size: .65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: .15rem .5rem;
+      border-radius: 999px;
+    }
+    .conf--high     { background: rgba(52,211,122,.15); color: var(--high); border: 1px solid rgba(52,211,122,.3); }
+    .conf--moderate { background: rgba(245,158,11,.15); color: var(--mod); border: 1px solid rgba(245,158,11,.3); }
+    .conf--low      { background: rgba(239, 68, 68,.15); color: var(--low); border: 1px solid rgba(239,68,68,.3); }
+
+    .d-bar-wrap { padding: 0 1rem; }
+    .d-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: .4rem 0;
+    }
+    .d-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .8s ease;
+    }
+    .fill--high     { background: linear-gradient(90deg, var(--brand-dim), var(--brand)); }
+    .fill--moderate { background: linear-gradient(90deg, #92400e, var(--mod)); }
+    .fill--low      { background: linear-gradient(90deg, #7f1d1d, var(--low)); }
+
+    .d-body { padding: .6rem 1rem .85rem; display: flex; flex-direction: column; gap: .5rem; }
+    .d-row { display: flex; gap: .55rem; align-items: flex-start; }
+    .d-icon { font-size: .9rem; flex-shrink: 0; margin-top: .1rem; }
+    .d-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: .1rem; font-weight: 600; }
+    .d-text  { font-size: .82rem; color: var(--text-2); line-height: 1.55; }
+
+    .no-match {
+      padding: .5rem 0;
+      color: var(--text-2);
+      font-size: .88rem;
+    }
+
+    /* Prolog attribution */
+    .prolog-tag {
+      font-size: .68rem;
+      color: var(--text-3);
+      margin-top: .85rem;
+      padding-top: .65rem;
+      border-top: 1px solid var(--border);
+    }
+    .prolog-tag code {
+      background: rgba(0,0,0,.35);
+      padding: .08rem .35rem;
+      border-radius: 4px;
+      font-size: .7em;
+      color: var(--brand);
+    }
+
+    /* ============================================================
+       INPUT BAR
+    ============================================================ */
+    .input-bar {
+      padding: 1rem 0 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .input-wrap {
+      background: var(--bg-2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: flex-end;
+      gap: .5rem;
+      padding: .65rem .75rem .65rem 1.1rem;
+      transition: border-color .2s;
+    }
+    .input-wrap:focus-within {
+      border-color: var(--brand-dim);
+      box-shadow: 0 0 0 3px var(--brand-glow);
+    }
+
+    #msgInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: .93rem;
+      line-height: 1.5;
+      resize: none;
+      max-height: 120px;
+      min-height: 22px;
+    }
+    #msgInput::placeholder { color: var(--text-3); }
+
+    .send-btn {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-sm);
+      background: var(--brand-dim);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--brand);
+      font-size: 1rem;
+      transition: background .2s, transform .15s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover  { background: var(--brand); color: #000; transform: scale(1.06); }
+    .send-btn:active { transform: scale(.96); }
+    .send-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+    .input-hint {
+      font-size: .72rem;
+      color: var(--text-3);
+      margin-top: .45rem;
+      padding-left: .3rem;
+    }
+    .input-hint kbd {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .05rem .35rem;
+      font-size: .68rem;
+      font-family: monospace;
+    }
+
+    /* ============================================================
+       WELCOME / EMPTY STATE
+    ============================================================ */
+    .welcome {
+      margin: auto 0;
+      text-align: center;
+      padding: 2rem 1rem;
+      animation: fadeSlide .5s ease forwards;
+    }
+    .welcome-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .welcome h2 {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: .6rem;
+    }
+    .welcome h2 span { color: var(--brand); }
+    .welcome p { color: var(--text-2); font-size: .9rem; max-width: 480px; margin: 0 auto .85rem; line-height: 1.65; }
+
+    .example-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+    .pill {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .5rem .85rem;
+      font-size: .78rem;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: border-color .2s, color .2s, background .2s;
+      text-align: left;
+    }
+    .pill:hover { border-color: var(--brand-dim); color: var(--brand); background: var(--brand-soft); }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 500px) {
+      .topbar { padding: .7rem 1rem; }
+      .brand-tag { display: none; }
+      .engine-badge span:not(.engine-dot) { display: none; }
+      .msg-bubble { max-width: 88%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====== TOP BAR ====== -->
+<header class="topbar" role="banner">
+  <div class="brand">
+    <span class="brand-name">KROPA</span>
+  </div>
+  <div class="topbar-right">
+    <div class="engine-badge" title="SWI-Prolog inference engine is active">
+      <span class="engine-dot" aria-hidden="true"></span>
+      Prolog Engine Active
+    </div>
+  </div>
+</header>
+
+<!-- ====== CHAT ====== -->
+<main class="chat-wrap" role="main" aria-label="KROPA diagnosis chat">
+
+  <div id="feed" aria-live="polite" aria-label="Conversation">
+
+    <!-- Welcome card (hidden once conversation starts) -->
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon" aria-hidden="true">🌾</div>
+      <h2>Describe your crop's <span>symptoms</span></h2>
+      <p>
+        Type a plain-language description of what you observe on your crop.
+        KROPA will extract the symptoms and run them through the
+        <strong>Prolog inference engine</strong> to return a ranked diagnosis.
+      </p>
+      <p style="font-size:.78rem; color: var(--text-3);">
+        Type <strong>/diagnose</strong> to submit, or press <strong>Enter</strong>.
+      </p>
+      <div class="example-pills" role="list" aria-label="Example queries">
+        {% for crop in crops %}
+        <button class="pill" role="listitem" onclick="useExample(this)">
+          {{ crop.name }} – try a symptom description
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ====== INPUT BAR ====== -->
+  <div class="input-bar">
+    <form class="input-wrap" id="chatForm" novalidate>
+      {% csrf_token %}
+      <textarea
+        id="msgInput"
+        rows="1"
+        placeholder="Describe the crop and symptoms you observe… (e.g. 'My tomato has dark water-soaked patches and white mold')"
+        aria-label="Symptom description"
+        autocomplete="off"
+        autofocus
+      ></textarea>
+      <button type="submit" class="send-btn" id="sendBtn" aria-label="Send diagnosis request">
+        ➤
+      </button>
+    </form>
+    <p class="input-hint">
+      Press <kbd>Enter</kbd> to send &nbsp;·&nbsp;
+      <kbd>Shift+Enter</kbd> for new line &nbsp;·&nbsp;
+      or start with <kbd>/diagnose</kbd>
+    </p>
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// KROPA CHAT FRONTEND
+// All diagnosis logic lives in Prolog. This script only handles
+// UI rendering and HTTP communication with the Django endpoint.
+// ============================================================
+
+const feed    = document.getElementById('feed');
+const welcome = document.getElementById('welcome');
+const input   = document.getElementById('msgInput');
+const form    = document.getElementById('chatForm');
+const sendBtn = document.getElementById('sendBtn');
+
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+// ---- Auto-resize textarea ----
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+// ---- Submit on Enter (Shift+Enter = newline) ----
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitMessage();
+  }
+});
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  submitMessage();
+});
+
+// ---- Example pills ----
+const EXAMPLES = {
+  'Maize (Corn)': 'My maize has pale yellow streaks along the leaves and the plants look stunted with distorted leaves.',
+  'Tomato':       'My tomatoes show dark water-soaked patches and there is white fuzzy mold on the underside of the leaves. The fruit is also turning brown and rotting.',
+  'Rice':         'The rice leaves have diamond-shaped lesions with a gray center and brown border, and the neck of the panicle is rotting.',
+  'Wheat':        'I see white powdery patches on the upper leaf surface and the leaves are yellowing. Growth is stunted.',
+  'Potato':       'My potato plants have dark water-soaked lesions on the leaves and there is brown rot inside the tubers.',
+  'Cassava':      'Cassava leaves show mosaic yellowing and the leaves are distorted and much smaller than normal.',
+  'Banana':       'The older outer banana leaves are yellowing and the leaf stems are wilting and collapsing.',
+  'Soybean':      'Soybean leaves have small tan to reddish-brown lesions and there are pustules on the underside of the leaves.',
+};
+
+function useExample(btn) {
+  const cropName = btn.textContent.split('–')[0].trim();
+  const key = Object.keys(EXAMPLES).find(k => cropName.includes(k.split(' ')[0]));
+  if (key) {
+    input.value = EXAMPLES[key];
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    input.focus();
+  }
+}
+
+// ============================================================
+// SEND MESSAGE
+// ============================================================
+async function submitMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  hideWelcome();
+  addUserBubble(text);
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  const typingId = addTypingIndicator();
+
+  try {
+    const res  = await fetch('/diagnose/', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  CSRF,
+      },
+      body: JSON.stringify({ message: text }),
+    });
+    const data = await res.json();
+    removeTyping(typingId);
+    addDiagnosisBubble(data);
+  } catch (err) {
+    removeTyping(typingId);
+    addSystemBubble('⚠️ Network error. Please try again.');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ============================================================
+// RENDERING HELPERS
+// ============================================================
+
+function hideWelcome() {
+  if (welcome) {
+    welcome.style.opacity = '0';
+    welcome.style.transition = 'opacity .2s';
+    setTimeout(() => welcome.remove(), 200);
+  }
+}
+
+function scrollBottom() {
+  requestAnimationFrame(() => {
+    feed.scrollTop = feed.scrollHeight;
+  });
+}
+
+function addUserBubble(text) {
+  const msg = document.createElement('div');
+  msg.className = 'msg msg--user';
+  msg.innerHTML = `
+    <div class="msg-avatar" aria-hidden="true">👤</div>
+    <div class="msg-bubble">${escHtml(text)}</div>
+  `;
+  feed.appendChild(msg);
+  scrollBottom();
+}
+
+function addSystemBubble(html) {
+  const msg = document.createElement('div');
+  msg.className = 'msg msg--system';
+  msg.innerHTML = `
+    <div class="msg-avatar" aria-hidden="true">🌿</div>
+    <div class="msg-bubble">${html}</div>
+  `;
+  feed.appendChild(msg);
+  scrollBottom();
+  return msg;
+}
+
+function addTypingIndicator() {
+  const id  = 'typing-' + Date.now();
+  const msg = document.createElement('div');
+  msg.className = 'msg msg--system';
+  msg.id = id;
+  msg.innerHTML = `
+    <div class="msg-avatar" aria-hidden="true">🌿</div>
+    <div class="msg-bubble">
+      <div class="typing-dots" aria-label="Processing…">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  `;
+  feed.appendChild(msg);
+  scrollBottom();
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function addDiagnosisBubble(data) {
+  if (data.status === 'no_symptoms' || data.status === 'unsupported_crop') {
+    const html = '🤔 ' + (data.message || '').replace(/\n/g, '<br>');
+    addSystemBubble(`<p style="line-height:1.7">${html}</p>`);
+    return;
+  }
+
+  if (data.error) {
+    addSystemBubble(`⚠️ ${escHtml(data.error)}`);
+    return;
+  }
+
+  const cropLabel = data.crop_name
+    ? `<span class="result-crop">${escHtml(data.crop_name)}</span>`
+    : '<span class="result-crop">Unknown crop</span>';
+
+  // Symptom chips
+  const chips = (data.symptoms || [])
+    .map(s => `<span class="sym-chip">${escHtml(s)}</span>`)
+    .join('');
+  const symSection = chips
+    ? `<div class="sym-chips" aria-label="Matched symptoms">${chips}</div>`
+    : '';
+
+  // Disease cards
+  let diseasesHtml = '';
+  if (data.results && data.results.length > 0) {
+    diseasesHtml = '<div class="disease-list">';
+    data.results.forEach((d, i) => {
+      const rank     = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+      const confLow  = (d.confidence || 'low').toLowerCase();
+      const fillCls  = `fill--${confLow}`;
+      const confCls  = `conf--${confLow}`;
+      const topCls   = i === 0 ? 'disease-item--top' : '';
+
+      diseasesHtml += `
+        <div class="disease-item ${topCls}">
+          <div class="d-head">
+            <span class="d-rank" aria-hidden="true">${rank}</span>
+            <span class="d-name">${escHtml(d.name)}</span>
+            <span class="d-score" style="color:var(--${confLow === 'high' ? 'high' : confLow === 'moderate' ? 'mod' : 'low'})">${d.score}%</span>
+            <span class="conf-badge ${confCls}">${escHtml(d.confidence)}</span>
+          </div>
+          <div class="d-bar-wrap">
+            <div class="d-bar">
+              <div class="d-bar-fill ${fillCls}" style="width:${d.score}%"></div>
+            </div>
+          </div>
+          <div class="d-body">
+            <div class="d-row">
+              <span class="d-icon" aria-hidden="true">🦠</span>
+              <div>
+                <div class="d-label">Cause</div>
+                <div class="d-text">${escHtml(d.cause)}</div>
+              </div>
+            </div>
+            <div class="d-row">
+              <span class="d-icon" aria-hidden="true">💊</span>
+              <div>
+                <div class="d-label">Treatment</div>
+                <div class="d-text">${escHtml(d.treatment)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    diseasesHtml += '</div>';
+  } else {
+    diseasesHtml = `<p class="no-match">No disease matched your symptoms in the knowledge base. Try providing more detail.</p>`;
+  }
+
+  const symCount = data.sym_count || (data.symptoms ? data.symptoms.length : 0);
+
+  const html = `
+    <div class="result-header">
+      Crop: ${cropLabel}
+      &nbsp;·&nbsp;
+      ${symCount} symptom${symCount !== 1 ? 's' : ''} matched
+    </div>
+    ${symSection}
+    ${diseasesHtml}
+    <div class="prolog-tag">
+      Reasoned by Prolog rule
+      <code>diagnose(${escHtml(data.crop_id || '?')}, [symptoms…], Disease, Score, …)</code>
+    </div>
+  `;
+
+  addSystemBubble(html);
+}
+
+// ---- Utility ----
+function escHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
